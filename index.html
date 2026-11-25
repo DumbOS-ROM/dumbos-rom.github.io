@@ -34,6 +34,7 @@
 
       <nav class="nav-links" aria-label="Main navigation">
         <a href="#simulator">Simulator</a>
+        <a href="#downloads">Downloads</a>
         <a href="#architecture">Architecture</a>
         <a href="#build">Build</a>
         <a href="#kernel">Kernel Guide</a>
@@ -59,8 +60,9 @@
           </p>
 
           <div class="hero-actions">
-            <a href="#build" class="btn btn-primary">Build from Source</a>
-            <a href="https://github.com/DumbOS-ROM/android" target="_blank" rel="noopener" class="btn">View Manifest ↗</a>
+            <a href="#downloads" class="btn btn-primary">Download Builds</a>
+            <a href="#build" class="btn">Build from Source</a>
+            <a href="https://github.com/DumbOS-ROM/android" target="_blank" rel="noopener" class="btn">Manifest ↗</a>
           </div>
 
           <div class="metrics-strip">
@@ -339,6 +341,37 @@
       </div>
     </section>
 
+    <!-- Downloads & Releases Portal -->
+    <section class="section" id="downloads">
+      <div class="container">
+        <div class="section-header" style="margin-bottom:26px;max-width:none;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;">
+          <div style="max-width:650px;">
+            <div class="section-kicker">OFFICIAL BUILDS // DUMBOS-ROM/RELEASES</div>
+            <h2 class="section-title">Downloads &amp; Device Releases</h2>
+            <p class="section-desc">
+              Builds published under <span class="code-inline">DumbOS-ROM/releases</span> appear here automatically with direct ZIP downloads and SHA-256 checksums.
+            </p>
+          </div>
+          <a href="https://github.com/DumbOS-ROM/releases/releases/new" target="_blank" rel="noopener" class="btn btn-sm">
+            Post New Build ↗
+          </a>
+        </div>
+
+        <div class="dl-toolbar">
+          <div class="dl-filters" id="dl-filters">
+            <button type="button" class="seg-btn active" data-dl-filter="all" style="border:1px solid var(--border-strong);border-radius:6px;">All Devices</button>
+          </div>
+          <input type="text" id="dl-search" class="dl-search" placeholder="Search codename, model, or zip..." aria-label="Search ROM builds" />
+        </div>
+
+        <div class="dl-grid" id="downloads-grid">
+          <div class="dl-card">
+            <div class="dl-specs">Loading builds from DumbOS-ROM/releases...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Architecture Section -->
     <section class="section" id="architecture">
       <div class="container">
@@ -476,6 +509,14 @@
           </p>
 
           <div class="repo-list">
+            <a class="repo-card" href="https://github.com/DumbOS-ROM/releases" target="_blank" rel="noopener">
+              <div>
+                <div class="repo-name"><span>releases</span><span>↗</span></div>
+                <p class="repo-desc" style="margin-top:6px;">Compiled OTA ZIPs, boot images, SHA-256 sums, and devices.json.</p>
+              </div>
+              <div class="repo-branches">main • GitHub Releases</div>
+            </a>
+
             <a class="repo-card" href="https://github.com/DumbOS-ROM/android" target="_blank" rel="noopener">
               <div>
                 <div class="repo-name"><span>android</span><span>↗</span></div>
@@ -535,6 +576,7 @@
       <div>DumbOS Project • Built on LineageOS, LineageOS-UL, and microG.</div>
       <div class="footer-links">
         <a href="https://github.com/DumbOS-ROM" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/DumbOS-ROM/releases" target="_blank" rel="noopener">Releases</a>
         <a href="https://github.com/DumbOS-ROM/android" target="_blank" rel="noopener">Manifest</a>
         <a href="https://github.com/DumbOS-ROM/android_vendor_dumbos/blob/main/docs/KERNEL_RECOMMENDATIONS.md" target="_blank" rel="noopener">Kernel Docs</a>
       </div>

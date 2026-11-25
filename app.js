@@ -80,6 +80,177 @@
   let selectedBranch = 'lineage-21.0';
   let selectedTree = 'standard';
 
+  let dlEntries = [];
+  let dlFilter = 'all';
+  let dlSearch = '';
+
+  function escHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes || bytes <= 0) return '0 MB';
+    const mb = bytes / (1024 * 1024);
+    return mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${mb.toFixed(1)} MB`;
+  }
+
+  function extractCodename(release, knownCodenames) {
+    const tag = (release.tag_name || '').toLowerCase();
+    for (const c of knownCodenames) {
+      if (tag === c || tag.startsWith(c + '-') || tag.startsWith(c + '_')) return c;
+    }
+    const assets = release.assets || [];
+    for (const a of assets) {
+      const m = (a.name || '').match(/DumbOS-[^-]+-\d+-[^-]+-([a-z0-9_]+)\.zip/i);
+      if (m) return m[1].toLowerCase();
+    }
+    const tagPart = tag.split(/[-_]/)[0];
+    return tagPart || 'generic';
+  }
+
+  function renderDownloadFilters() {
+    const wrap = document.getElementById('dl-filters');
+    if (!wrap) return;
+    const codenames = Array.from(new Set(dlEntries.map((e) => e.codename)));
+    const chips = ['all', ...codenames];
+    wrap.innerHTML = chips
+      .map((c) => {
+        const label = c === 'all' ? 'All Devices' : c;
+        const active = dlFilter === c ? 'active' : '';
+        return `<button type="button" class="seg-btn ${active}" data-dl-filter="${escHtml(c)}" style="border:1px solid var(--border-strong);border-radius:6px;">${escHtml(label)}</button>`;
+      })
+      .join('');
+
+    wrap.querySelectorAll('[data-dl-filter]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        dlFilter = btn.getAttribute('data-dl-filter');
+        renderDownloadFilters();
+        renderDownloads();
+      });
+    });
+  }
+
+  function renderDownloads() {
+    const grid = document.getElementById('downloads-grid');
+    if (!grid) return;
+
+    const q = dlSearch.trim().toLowerCase();
+    const visible = dlEntries.filter((e) => {
+      if (dlFilter !== 'all' && e.codename !== dlFilter) return false;
+      if (!q) return true;
+      const hay = `${e.codename} ${e.name} ${e.android} ${(e.releases || []).map((r) => (r.name || '') + ' ' + (r.assets || []).map((a) => a.name).join(' ')).join(' ')}`.toLowerCase();
+      return hay.includes(q);
+    });
+
+    if (visible.length === 0) {
+      grid.innerHTML = `<div class="dl-card"><div class="dl-specs">No matching devices or builds found.</div></div>`;
+      return;
+    }
+
+    grid.innerHTML = visible
+      .map((entry) => {
+        const rels = entry.releases || [];
+        const latest = rels[0];
+        const statusCls = latest ? 'dl-status live' : 'dl-status';
+        const statusText = latest ? `${rels.length} Release${rels.length > 1 ? 's' : ''}` : (entry.status || 'Awaiting Upload');
+        const specs = [entry.oem, entry.android, entry.ram ? `${entry.ram} RAM` : '', entry.kernel].filter(Boolean).join(' • ');
+
+        let bodyHtml = '';
+        if (latest) {
+          const assets = latest.assets || [];
+          const primaryZip = assets.find((a) => /\.zip$/i.test(a.name)) || assets[0];
+          const extraAssets = assets.filter((a) => a !== primaryZip);
+          const pubDate = latest.published_at ? latest.published_at.slice(0, 10) : '';
+
+          bodyHtml = `
+            <div class="dl-release-box">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong style="font-size:0.86rem;color:#fff;">${escHtml(latest.name || latest.tag_name)}</strong>
+                <span class="dl-specs">${escHtml(pubDate)}</span>
+              </div>
+              ${primaryZip ? `<div class="dl-file-meta">${escHtml(primaryZip.name)} (${formatBytes(primaryZip.size)}) • ${primaryZip.download_count || 0} downloads</div>` : '<div class="dl-file-meta">No downloadable assets attached yet.</div>'}
+              <div class="dl-actions">
+                ${primaryZip ? `<a href="${escHtml(primaryZip.browser_download_url)}" class="btn btn-primary btn-sm">Download ZIP ↓</a>` : ''}
+                ${extraAssets.map((a) => `<a href="${escHtml(a.browser_download_url)}" class="btn btn-sm">${escHtml(a.name.split('.').slice(-1)[0].toUpperCase())} ↓</a>`).join('')}
+                <a href="${escHtml(latest.html_url)}" target="_blank" rel="noopener" class="btn btn-sm">Release Page ↗</a>
+              </div>
+              ${latest.body ? `<details class="dl-notes"><summary>Changelog &amp; Flash Notes</summary><pre>${escHtml(latest.body)}</pre></details>` : ''}
+            </div>`;
+        } else {
+          const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+          const uploadUrl = `https://github.com/DumbOS-ROM/releases/releases/new?tag=${encodeURIComponent(entry.codename + '-' + today)}&title=${encodeURIComponent('DumbOS (' + entry.codename + ') — ' + (entry.android || ''))}`;
+          bodyHtml = `
+            <div class="dl-release-box">
+              <div class="dl-file-meta">No compiled ZIP uploaded yet for <strong>${escHtml(entry.codename)}</strong>.</div>
+              ${entry.notes ? `<div class="dl-specs">${escHtml(entry.notes)}</div>` : ''}
+              <div class="dl-actions">
+                <a href="${uploadUrl}" target="_blank" rel="noopener" class="btn btn-sm">Upload ${escHtml(entry.codename)} Build ↗</a>
+              </div>
+            </div>`;
+        }
+
+        return `
+          <article class="dl-card">
+            <div class="dl-card-head">
+              <div>
+                <h3 style="font-size:1.12rem;color:#fff;margin-bottom:4px;">${escHtml(entry.name || entry.codename)}</h3>
+                <div class="dl-specs">${escHtml(specs)}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                <span class="dl-codename">${escHtml(entry.codename)}</span>
+                <span class="${statusCls}">${escHtml(statusText)}</span>
+              </div>
+            </div>
+            ${bodyHtml}
+          </article>`;
+      })
+      .join('');
+  }
+
+  async function loadReleasesPortal() {
+    let devices = [];
+    try {
+      const devRes = await fetch('https://raw.githubusercontent.com/DumbOS-ROM/releases/main/devices.json', { cache: 'no-store' });
+      if (devRes.ok) {
+        const json = await devRes.json();
+        devices = json.devices || [];
+      }
+    } catch (_) {}
+
+    let releases = [];
+    try {
+      const relRes = await fetch('https://api.github.com/repos/DumbOS-ROM/releases/releases?per_page=30', { cache: 'no-store' });
+      if (relRes.ok) {
+        releases = await relRes.json();
+      }
+    } catch (_) {}
+
+    const map = new Map();
+    devices.forEach((d) => {
+      const c = (d.codename || '').toLowerCase();
+      if (c) map.set(c, { ...d, codename: c, releases: [] });
+    });
+
+    const known = Array.from(map.keys());
+    (Array.isArray(releases) ? releases : []).forEach((r) => {
+      if (r.draft) return;
+      const c = extractCodename(r, known);
+      if (!map.has(c)) {
+        map.set(c, { codename: c, name: c.toUpperCase(), android: 'DumbOS Build', releases: [] });
+      }
+      map.get(c).releases.push(r);
+    });
+
+    dlEntries = Array.from(map.values()).sort((a, b) => (b.releases.length > 0) - (a.releases.length > 0));
+    renderDownloadFilters();
+    renderDownloads();
+  }
+
   function renderFavorites() {
     const container = document.getElementById('sim-fav-list');
     if (!container) return;
@@ -433,11 +604,20 @@ brunch <device_codename>`;
       });
     }
 
+    const dlSearchInput = document.getElementById('dl-search');
+    if (dlSearchInput) {
+      dlSearchInput.addEventListener('input', (e) => {
+        dlSearch = e.target.value;
+        renderDownloads();
+      });
+    }
+
     renderFavorites();
     renderDrawer('');
     renderRecents();
     applyMode(0);
     setScreen('home');
     updateBuildCommands();
+    loadReleasesPortal();
   });
 })();
